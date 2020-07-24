@@ -1,9 +1,31 @@
-import React from 'react'
+import React, { useState } from 'react'
+import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
+import { useMutation, gql } from '@apollo/client'
+
+const NEW_ACCOUNT = gql`
+  mutation newUser($input: UserInput){
+    newUser(input: $input){
+      id
+      name
+      lastName
+      email
+    }
+  }
+`
 
 export default function Signup () {
+  // states para el mensaje
+  const [message, setMessage] = useState(null)
+
+  // mutation
+  const [newUser] = useMutation(NEW_ACCOUNT)
+
+  // routing
+  const router = useRouter()
+
   const formik = useFormik({
     initialValues: {
       name: '',
@@ -17,14 +39,48 @@ export default function Signup () {
       email: Yup.string().email('Email no Valido').required('El email es Requerido'),
       password: Yup.string().required('El Password es Requerido').min(8, 'El Password debe ser mayor de 8 caracteres')
     }),
-    onSubmit: values => {
-      console.log('enviando')
+    onSubmit: async values => {
       console.log(values)
+      try {
+        const { data } = await newUser({
+          variables: {
+            input: values
+          }
+        })
+        console.log(data)
+        // usuario creado correctamente d
+        setMessage(`Se creo correctamente el Usuario: ${data.newUser.name}`)
+        setTimeout(() => {
+          setMessage(null)
+          router.push('/login')
+        }, 3000)
+        // redirigir al usuario para iniciar sesion
+      } catch (error) {
+        setMessage(error.message.replace('Error: ', ''))
+        setTimeout(() => {
+          setMessage(null)
+        }, 3000)
+      }
     }
   })
+
+  const showMessage = () => {
+    return (
+      <div className='bg-white py-2 px-3 w-full my-3 max-w-sm text-center mx-auto'>
+        <p>
+          {message}
+        </p>
+      </div>
+    )
+  }
+
   return (
     <>
       <Layout>
+        {
+          message && showMessage()
+        }
+
         <h1 className='text-center text-2xl text-white font-light'>Nueva Cuenta</h1>
         <div className='flex justify-center mt-5'>
           <div className='w-full max-w-sm'>
